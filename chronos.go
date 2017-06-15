@@ -8,6 +8,13 @@ import (
 	"time"
 )
 
+// Enum of scheduler kind
+const (
+	periodicKind = iota
+	monthlyKind  = iota
+	yearlyKind   = iota
+)
+
 const (
 	Day  = 24 * time.Hour
 	Week =  7 * Day
@@ -16,6 +23,16 @@ const (
 type scheduler interface {
 	// Returns wether there is another event scheduled and the remaining time
 	next() (bool, time.Duration)
+}
+
+// Auxiliar type that holds the information needed to build the scheduler
+type auxiliar struct {
+	kind,                        // Enum of scheduler kind
+	ammount        int
+	notInmediately bool
+	start,
+	end            time.Time
+	unit           time.Duration
 }
 
 // Accepts periods in every time unit from ns to weeks, months and years need to
