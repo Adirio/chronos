@@ -13,117 +13,181 @@ const (
 	Week =  7 * Day
 )
 
-type ChronosJob struct {
-	schedule scheduler
-}
-
 type scheduler interface {
-	next() (time.Duration, bool, error)
+	// Returns wether there is another event scheduled and the remaining time
+	next() (bool, time.Duration)
 }
 
-// Accepts periods in every time unit from ns to weeks,
-// months and years need to be considered separately as
-// their length is not constant
+// Accepts periods in every time unit from ns to weeks, months and years need to
+// be considered separately as their length is not constant
 type periodic struct {
-	start   time.Time
-	end     time.Time
-	started bool
-	ammount int
-	unit    time.Duration
+	start,                 // Start time
+	end      time.Time     // End time, zero value means no end
+	started  bool          // Internal flag to handle first executions
+	ammount  time.Duration // Period
+	n        int           // Number of already executed events
 }
 
-func (schedule *periodic) next() (time.Duration, bool, error) {
-	if schedule.unit == 0 || schedule.ammount == 0 {
-		return 0, false, errors.New("0 is not a valid period")
+// Constructor
+func newPeriodic(start, end time.Time, ammount int, unit time.Duration, notInmediately bool) (*periodic, error) {
+	// Check the input is valid
+	if ammount == 0 || unit == 0 {
+		return nil, errors.New("0 is not a valid period")
 	}
-	now := time.Now()
-	if !schedule.end.IsZero && now.After(schedule.end) {
-		return 0, false, nil
+	// If no start time was assigned, use current time
+	if start.IsZero() {
+		start = time.Now()
 	}
-	if !schedule.started {
-		schedule.started = true
-		if now.After(schedule.start) {
-			return 0, true, nil
+	// If notInmediately was called, the starting date should not be returned
+	// by periodic.next() call, so we add 1 to the event count to avoid it
+	var n int
+	if notInmediately {
+		n = 1
+	}
+
+	return &periodic{start:start, end:end, started:notInmediately,
+	                 ammount:time.Duration(ammount*int(unit)), n:n},
+	       nil
+}
+
+// Auxiliar function that returns the execution time candidate
+func (s *periodic) getCandidate() time.Time {
+	return s.start.Add(time.Duration(s.n*int(s.ammount)))
+}
+
+// Implements scheduler.next()
+func (s *periodic) next() (bool, time.Duration) {
+	// Calculate the next iteration
+	next := s.getCandidate()
+	for next.Before(time.Now()) {
+		if !s.started {
+			break
 		}
-		return schedule.start.Sub(now), true, nil
+		s.n++
+		next = s.getCandidate()
 	}
-	return schedule.ammount * schedule.unit, true, nil
+	if !s.started {
+		s.started = true
+	}
+
+	// Check if the end date has arrived
+	return s.end.IsZero() || next.Before(s.end), next.Sub(time.Now())
 }
 
-// Monthly periods need to be considered separately as
-// their length is not constant (28-31 days)
+// Monthly periods need to be considered separately as their length is not
+// constant (28-31 days)
 type monthly struct {
-	start   time.Time
-	end     time.Time
-	started bool
-	n       int
-	ammount int
+	start,             // Start time
+	end      time.Time // End time, zero value means no end
+	started  bool      // Internal flag to handle first executions
+	ammount,           // Ammount of months that made up a period
+	n        int       // Number of already executed events
 }
 
-func (schedule *monthly) next() (time.Duration, bool, error) {
-	if schedule.ammount == 0 {
-		return 0, false, errors.New("0 months is not a valid period")
+// Constructor
+func newMonthly(start, end time.Time, ammount int, notInmediately bool) (*monthly, error) {
+	// Check the input is valid
+	if ammount == 0 {
+		return nil, errors.New("0 months is not a valid period")
 	}
-	now := time.Now()
-	if !schedule.end.IsZero && now.After(schedule.end) {
-		return 0, false, nil
+	// If no start time was assigned, use current time
+	if start.IsZero() {
+		start = time.Now()
 	}
-	if !schedule.started {
-		schedule.started = true
-		if now.After(schedule.start) {
-			return 0, true, nil
+	// If notInmediately was called, the starting date should not be returned
+	// by periodic.next() call, so we add 1 to the event count to avoid it
+	var n int
+	if notInmediately {
+		n = 1
+	}
+
+	return &monthly{start:start, end:end, started:notInmediately,
+	                ammount:ammount, n:n},
+	       nil
+}
+
+func (s *monthly) getCandidate() time.Time {
+	res := s.start.AddDate(0, s.n*s.ammount, 0)
+	if res.Day() != s.start.Day() {
+		res = res.AddDate(0, 0, -res.Day())
+	}
+	return res
+}
+
+// Implements scheduler.next()
+func (s *monthly) next() (bool, time.Duration) {
+	// Calculate the next iteration
+	next := s.getCandidate()
+	for next.Before(time.Now()) {
+		if !s.started {
+			break
 		}
-		return schedule.start.Sub(now), true, nil
+		s.n++
+		next = s.getCandidate()
 	}
-	if now.Before(schedule.start) {
-		next := schedule.start
-	} else {
-		next := schedule.previous.AddDate(0, schedule.n, 0)
-		// If the day does not exist for that month time.Time.AddDate
-		// normalizes it, so we need to substract the extra days
-		if next.Day() != schedule.start.Day() {
-			next = next.AddDate(0, 0, -next.Day())
-		}
+	if !s.started {
+		s.started = true
 	}
-	schedule.n += schedule.ammount
-	return next.Sub(now), true, nil
+
+	// Check if the end date has arrived
+	return s.end.IsZero() || next.Before(s.end), next.Sub(time.Now())
 }
 
 // Yearly periods need to be considered separately as
 // their length is not constant (365-366 days)
 type yearly struct {
-	start   time.Time
-	end     time.Time
-	started bool
-	n       int
-	ammount int
+	start,             // Start time
+	end      time.Time // End time, zero value means no end
+	started  bool      // Internal flag to handle first executions
+	ammount,           // Ammount of years that made up a period
+	n        int       // Number of already executed events
 }
 
-func (schedule *yearly) next() (time.Duration, bool, error) {
-	if schedule.ammount == 0 {
-		return 0, false, errors.New("0 years is not a valid period")
+// Constructor
+func newYearly(start, end time.Time, ammount int, notInmediately bool) (*yearly, error) {
+	// Check the input is valid
+	if ammount == 0 {
+		return nil, errors.New("0 years is not a valid period")
 	}
-	now := time.Now()
-	if !schedule.end.IsZero && now.After(schedule.end) {
-		return 0, false, nil
+	// If no start time was assigned, use current time
+	if start.IsZero() {
+		start = time.Now()
 	}
-	if !schedule.started {
-		schedule.started = true
-		if now.After(schedule.start) {
-			return 0, true, nil
+	// If notInmediately was called, the starting date should not be returned
+	// by periodic.next() call, so we add 1 to the event count to avoid it
+	var n int
+	if notInmediately {
+		n = 1
+	}
+
+	return &yearly{start:start, end:end, started:notInmediately,
+	               ammount:ammount, n:n},
+	       nil
+}
+
+func (s *yearly) getCandidate() time.Time {
+	res := s.start.AddDate(s.n*s.ammount, 0, 0)
+	if res.Day() != s.start.Day() {
+		res = res.AddDate(0, 0, -res.Day())
+	}
+	return res
+}
+
+// implements scheduler.next()
+func (s *yearly) next() (bool, time.Duration) {
+	// Calculate the next iteration
+	next := s.getCandidate()
+	for next.Before(time.Now()) {
+		if !s.started {
+			break
 		}
-		return schedule.start.Sub(now), true, nil
+		s.n++
+		next = s.getCandidate()
 	}
-	if now.Before(schedule.start) {
-		next := schedule.start
-	} else {
-		next := schedule.start.AddDate(schedule.n, 0, 0)
-		// If the day does not exist for that month time.Time.AddDate
-		// normalizes it, so we need to substract the extra days
-		if next.Day() != schedule.start.Day() {
-			next = next.AddDate(0, 0, -next.Day())
-		}
+	if !s.started {
+		s.started = true
 	}
-	schedule.n += schedule.ammount
-	return next.Sub(now), true, nil
+
+	// Check if the end date has arrived
+	return s.end.IsZero() || next.Before(s.end), next.Sub(time.Now())
 }
