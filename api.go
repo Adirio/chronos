@@ -7,28 +7,6 @@ import (
 	"time"
 )
 
-// Enum of scheduler kind
-const (
-	Periodic = iota
-	Monthly  = iota
-	Yearly   = iota
-)
-
-const (
-	Day  = 24 * time.Hour
-	Week =  7 * Day
-)
-
-// Auxiliar type that holds the information needed to build the scheduler
-type auxiliar struct {
-	kind,                        // Enum of scheduler kind
-	ammount        int
-	notInmediately bool
-	start,
-	end            time.Time
-	unit           time.Duration
-}
-
 type Job struct {
 	task    func()    // Task to be scheduled
 	times,            // Times that the task can be executed, -1 means no limit
