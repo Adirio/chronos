@@ -9,20 +9,20 @@ import (
 )
 
 type Job struct {
-	task     func()        // Task to be scheduled
-	times,                 // Times that it can be executed, -1 means no limit
-	n        int           // Times that it has been executed
-	aux      auxiliar      // Holds the values for following API calls
-	schedule *scheduler    // Scheduler to determine when to run the job
-	quit,                  // Channel for quitting the scheduled job
-	skip     chan struct{} // Channel for executing the task inmediately
+	task   func() // Task to be scheduled
+	times, // Times that it can be executed, -1 means no limit
+	n int // Times that it has been executed
+	aux      auxiliar   // Holds the values for following API calls
+	schedule *scheduler // Scheduler to determine when to run the job
+	quit,    // Channel for quitting the scheduled job
+	skip chan struct{} // Channel for executing the task inmediately
 	// TODO: add a lock
 }
 
 // Job construction with task assignment
 func Schedule(f func()) *Job {
-	return &Job{task:f, times:-1, quit:make(chan struct{}, 1),
-	            skip:make(chan struct{}, 1)}
+	return &Job{task: f, times: -1, quit: make(chan struct{}, 1),
+		skip: make(chan struct{}, 1)}
 }
 
 // Defining the number of times
@@ -43,9 +43,9 @@ func (j *Job) Twice() *Job {
 func (j *Job) Every(times ...int) *Job {
 	switch len(times) {
 	case 0:
-		j.aux.ammount := 1
+		j.aux.ammount = 1
 	case 1:
-		j.aux.ammount := times[0]
+		j.aux.ammount = times[0]
 	default:
 		panic("Too many arguments in Job.Every()")
 	}
@@ -142,47 +142,49 @@ func (j *Job) Years() *Job {
 }
 
 // Defining if it should run at the start of the cycle
-func(j *Job) NotInmediately() *Job {
+func (j *Job) NotInmediately() *Job {
 	j.aux.notInmediately = true
 	return j
 }
 
 // Defining the starting and ending times
-func(j *Job) At(t time.Time) *Job {
+func (j *Job) At(t time.Time) *Job {
 	j.aux.start = t
 	return j
 }
 
-func(j *Job) In(d time.Duration) *Job {
+func (j *Job) In(d time.Duration) *Job {
 	return j.At(time.Now().Add(d))
 }
 
-func(j *Job) Until(t time.Time) *Job {
+func (j *Job) Until(t time.Time) *Job {
 	j.aux.end = t
 	return j
 }
 
 // Scheduling the task
-func(j *Job) Done() (error, chan struct{}, chan struct{}) {
+func (j *Job) Done() (error, chan struct{}, chan struct{}) {
 	var err error
 	switch j.aux.kind {
 	case periodicKind:
 		j.schedule, err = newPeriodic(j.aux.start, j.aux.end, j.aux.ammount,
-		                              j.aux.unit, j.aux.notInmediately)
+			j.aux.unit, j.aux.notInmediately)
 	case monthlyKind:
 		j.schedule, err = newMonthly(j.aux.start, j.aux.end, j.aux.ammount,
-		                             j.aux.notInmediately)
+			j.aux.notInmediately)
 	case yearlyKind:
 		j.schedule, err = newYearly(j.aux.start, j.aux.end, j.aux.ammount,
-		                            j.aux.notInmediately)
+			j.aux.notInmediately)
 	}
-	
+
 	if err == nil {
 		go func(j *Job) {
-			select{
+			select {
 			case <-j.quit:
 				return
-			case <-j.skip, <-timer.C:
+			case <-j.skip:
+				go j.run()
+			case <-timer.C:
 				go j.run()
 			}
 		}(j)

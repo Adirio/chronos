@@ -17,7 +17,7 @@ const (
 
 const (
 	Day  = 24 * time.Hour
-	Week =  7 * Day
+	Week = 7 * Day
 )
 
 type scheduler interface {
@@ -27,22 +27,22 @@ type scheduler interface {
 
 // Auxiliar type that holds the information needed to build the scheduler
 type auxiliar struct {
-	kind,                        // Enum of scheduler kind
-	ammount        int
+	kind, // Enum of scheduler kind
+	ammount int
 	notInmediately bool
 	start,
-	end            time.Time
-	unit           time.Duration
+	end time.Time
+	unit time.Duration
 }
 
 // Accepts periods in every time unit from ns to weeks, months and years need to
 // be considered separately as their length is not constant
 type periodic struct {
-	start,                 // Start time
-	end      time.Time     // End time, zero value means no end
-	started  bool          // Internal flag to handle first executions
-	ammount  time.Duration // Period
-	n        int           // Number of already executed events
+	start, // Start time
+	end time.Time // End time, zero value means no end
+	started bool          // Internal flag to handle first executions
+	ammount time.Duration // Period
+	n       int           // Number of already executed events
 }
 
 // Constructor
@@ -62,14 +62,13 @@ func newPeriodic(start, end time.Time, ammount int, unit time.Duration, notInmed
 		n = 1
 	}
 
-	return &periodic{start:start, end:end, started:notInmediately,
-	                 ammount:time.Duration(ammount*int(unit)), n:n},
-	       nil
+	return &periodic{start: start, end: end, started: notInmediately,
+			ammount: time.Duration(ammount * int(unit)), n: n}, nil
 }
 
 // Auxiliar function that returns the execution time candidate
 func (s *periodic) getCandidate() time.Time {
-	return s.start.Add(time.Duration(s.n*int(s.ammount)))
+	return s.start.Add(time.Duration(s.n * int(s.ammount)))
 }
 
 // Implements scheduler.next()
@@ -94,11 +93,11 @@ func (s *periodic) next() (bool, time.Duration) {
 // Monthly periods need to be considered separately as their length is not
 // constant (28-31 days)
 type monthly struct {
-	start,             // Start time
-	end      time.Time // End time, zero value means no end
-	started  bool      // Internal flag to handle first executions
-	ammount,           // Ammount of months that made up a period
-	n        int       // Number of already executed events
+	start, // Start time
+	end time.Time // End time, zero value means no end
+	started  bool // Internal flag to handle first executions
+	ammount, // Ammount of months that made up a period
+	n int // Number of already executed events
 }
 
 // Constructor
@@ -118,9 +117,8 @@ func newMonthly(start, end time.Time, ammount int, notInmediately bool) (*monthl
 		n = 1
 	}
 
-	return &monthly{start:start, end:end, started:notInmediately,
-	                ammount:ammount, n:n},
-	       nil
+	return &monthly{start: start, end: end, started: notInmediately,
+			ammount: ammount, n: n}, nil
 }
 
 func (s *monthly) getCandidate() time.Time {
@@ -153,11 +151,11 @@ func (s *monthly) next() (bool, time.Duration) {
 // Yearly periods need to be considered separately as
 // their length is not constant (365-366 days)
 type yearly struct {
-	start,             // Start time
-	end      time.Time // End time, zero value means no end
-	started  bool      // Internal flag to handle first executions
-	ammount,           // Ammount of years that made up a period
-	n        int       // Number of already executed events
+	start, // Start time
+	end time.Time // End time, zero value means no end
+	started  bool // Internal flag to handle first executions
+	ammount, // Ammount of years that made up a period
+	n int // Number of already executed events
 }
 
 // Constructor
@@ -177,9 +175,8 @@ func newYearly(start, end time.Time, ammount int, notInmediately bool) (*yearly,
 		n = 1
 	}
 
-	return &yearly{start:start, end:end, started:notInmediately,
-	               ammount:ammount, n:n},
-	       nil
+	return &yearly{start: start, end: end, started: notInmediately,
+			ammount: ammount, n: n}, nil
 }
 
 func (s *yearly) getCandidate() time.Time {
