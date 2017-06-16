@@ -5,18 +5,24 @@ package chronos
 
 import (
 	"time"
+	//"sync"
 )
 
 type Job struct {
-	task    func()    // Task to be scheduled
-	times,            // Times that the task can be executed, -1 means no limit
-	aux     auxiliar  // Holds the values for following API calls
-	shedule scheduler // Scheduler to determine when to run the job
+	task     func()        // Task to be scheduled
+	times,                 // Times that it can be executed, -1 means no limit
+	n        int           // Times that it has been executed
+	aux      auxiliar      // Holds the values for following API calls
+	schedule *scheduler    // Scheduler to determine when to run the job
+	quit,                  // Channel for quitting the scheduled job
+	skip     chan struct{} // Channel for executing the task inmediately
+	// TODO: add a lock
 }
 
 // Job construction with task assignment
 func Schedule(f func()) *Job {
-	return &Job{task:f, times:-1}
+	return &Job{task:f, times:-1, quit:make(chan struct{}, 1),
+	            skip:make(chan struct{}, 1)}
 }
 
 // Defining the number of times
@@ -157,7 +163,7 @@ func(j *Job) Until(t time.Time) *Job {
 }
 
 // Scheduling the task
-func(j *Job) Done() error {
+func(j *Job) Done() (error, chan struct{}, chan struct{}) {
 	var err error
 	switch j.aux.kind {
 	case periodicKind:
@@ -170,9 +176,26 @@ func(j *Job) Done() error {
 		j.schedule, err = newYearly(j.aux.start, j.aux.end, j.aux.ammount,
 		                            j.aux.notInmediately)
 	}
-	if err != nil {
-		return err
+	
+	if err == nil {
+		go func(j *Job) {
+			select{
+			case <-j.quit:
+				return
+			case <-j.skip, <-timer.C:
+				go j.run()
+			}
+		}(j)
 	}
 
-	// TODO: schedule and execute the task
+	return err, j.skip, j.quit
+}
+
+func (j *Job) run() {
+	// Lock
+	if j.times == -1 || j.n < j.times {
+		j.n++
+		j.task()
+	}
+	// Unlock
 }
