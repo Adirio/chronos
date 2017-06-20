@@ -20,12 +20,14 @@ type Job struct {
 }
 
 // Job construction with task assignment
+
 func Schedule(f func()) *Job {
 	return &Job{task: f, times: -1, quit: make(chan struct{}, 1),
 		skip: make(chan struct{}, 1)}
 }
 
 // Defining the number of times
+
 func (j *Job) NTimes(n int) *Job {
 	j.times = n
 	return j
@@ -40,6 +42,7 @@ func (j *Job) Twice() *Job {
 }
 
 // Defining the period size in units
+
 func (j *Job) Every(times ...int) *Job {
 	switch len(times) {
 	case 0:
@@ -53,6 +56,7 @@ func (j *Job) Every(times ...int) *Job {
 }
 
 // Defining the period's unit duration
+
 func (j *Job) duration(d time.Duration) *Job {
 	j.aux.kind = periodicKind
 	j.aux.unit = d
@@ -142,12 +146,14 @@ func (j *Job) Years() *Job {
 }
 
 // Defining if it should run at the start of the cycle
+
 func (j *Job) NotInmediately() *Job {
 	j.aux.notInmediately = true
 	return j
 }
 
 // Defining the starting and ending times
+
 func (j *Job) At(t time.Time) *Job {
 	j.aux.start = t
 	return j
@@ -163,6 +169,7 @@ func (j *Job) Until(t time.Time) *Job {
 }
 
 // Scheduling the task
+
 func (j *Job) Done() (error, chan struct{}, chan struct{}) {
 	var err error
 	switch j.aux.kind {
