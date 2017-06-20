@@ -171,6 +171,10 @@ func (j *Job) Until(t time.Time) *Job {
 // Scheduling the task
 
 func (j *Job) Done() (error, chan struct{}, chan struct{}) {
+	var (
+		err      error
+		schedule *scheduler
+	)
 	switch j.aux.kind {
 	case periodicKind:
 		schedule, err := newPeriodic(j.aux.start, j.aux.end, j.aux.ammount,
@@ -185,14 +189,27 @@ func (j *Job) Done() (error, chan struct{}, chan struct{}) {
 
 	if err == nil {
 		j.schedule = schedule
+
 		go func(j *Job) {
-			select {
-			case <-j.quit:
-				return
-			case <-j.skip:
-				go j.run()
-			case <-timer.C:
-				go j.run()
+			var (
+				ok    bool
+				next  time.Duration
+				timer time.Timer
+			)
+			for {
+				ok, next = j.scheduler.next()
+				if !ok {
+					return
+				}
+				timer = time.NewTimer(next)
+				select {
+				case <-j.quit:
+					return
+				case <-j.skip:
+					go j.run()
+				case <-timer.C:
+					go j.run()
+				}
 			}
 		}(j)
 	}
