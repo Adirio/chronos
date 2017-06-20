@@ -4,8 +4,8 @@
 package chronos
 
 import (
+	"sync"
 	"time"
-	//"sync"
 )
 
 type Job struct {
@@ -16,7 +16,7 @@ type Job struct {
 	schedule *scheduler // Scheduler to determine when to run the job
 	quit,    // Channel for quitting the scheduled job
 	skip chan struct{} // Channel for executing the task inmediately
-	// TODO: add a lock
+	mutex sync.Mutex // Mutex to avoid concurrent executions of the same task
 }
 
 // Job construction with task assignment
@@ -201,10 +201,11 @@ func (j *Job) Done() (error, chan struct{}, chan struct{}) {
 }
 
 func (j *Job) run() {
-	// Lock
+	j.mutex.Lock()
+	defer j.mutex.Unlock()
+
 	if j.times == -1 || j.n < j.times {
 		j.n++
 		j.task()
 	}
-	// Unlock
 }
