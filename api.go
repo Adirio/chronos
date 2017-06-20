@@ -171,20 +171,20 @@ func (j *Job) Until(t time.Time) *Job {
 // Scheduling the task
 
 func (j *Job) Done() (error, chan struct{}, chan struct{}) {
-	var err error
 	switch j.aux.kind {
 	case periodicKind:
-		j.schedule, err = newPeriodic(j.aux.start, j.aux.end, j.aux.ammount,
+		schedule, err := newPeriodic(j.aux.start, j.aux.end, j.aux.ammount,
 			j.aux.unit, j.aux.notInmediately)
 	case monthlyKind:
-		j.schedule, err = newMonthly(j.aux.start, j.aux.end, j.aux.ammount,
+		schedule, err := newMonthly(j.aux.start, j.aux.end, j.aux.ammount,
 			j.aux.notInmediately)
 	case yearlyKind:
-		j.schedule, err = newYearly(j.aux.start, j.aux.end, j.aux.ammount,
+		schedule, err := newYearly(j.aux.start, j.aux.end, j.aux.ammount,
 			j.aux.notInmediately)
 	}
 
 	if err == nil {
+		j.schedule = schedule
 		go func(j *Job) {
 			select {
 			case <-j.quit:
