@@ -13,7 +13,7 @@ type Job struct {
 	times, // Times that it can be executed, -1 means no limit
 	n int // Times that it has been executed
 	aux      auxiliar   // Holds the values for following API calls
-	schedule *scheduler // Scheduler to determine when to run the job
+	schedule scheduler // Scheduler to determine when to run the job
 	quit,    // Channel for quitting the scheduled job
 	skip chan struct{} // Channel for executing the task inmediately
 	mutex sync.Mutex // Mutex to avoid concurrent executions of the same task
@@ -173,17 +173,18 @@ func (j *Job) Until(t time.Time) *Job {
 func (j *Job) Done() (error, chan struct{}, chan struct{}) {
 	var (
 		err      error
-		schedule *scheduler
+		schedule scheduler
 	)
+
 	switch j.aux.kind {
 	case periodicKind:
-		schedule, err := newPeriodic(j.aux.start, j.aux.end, j.aux.ammount,
+		schedule, err = newPeriodic(j.aux.start, j.aux.end, j.aux.ammount,
 			j.aux.unit, j.aux.notInmediately)
 	case monthlyKind:
-		schedule, err := newMonthly(j.aux.start, j.aux.end, j.aux.ammount,
+		schedule, err = newMonthly(j.aux.start, j.aux.end, j.aux.ammount,
 			j.aux.notInmediately)
 	case yearlyKind:
-		schedule, err := newYearly(j.aux.start, j.aux.end, j.aux.ammount,
+		schedule, err = newYearly(j.aux.start, j.aux.end, j.aux.ammount,
 			j.aux.notInmediately)
 	}
 
@@ -197,7 +198,7 @@ func (j *Job) Done() (error, chan struct{}, chan struct{}) {
 				timer *time.Timer
 			)
 			for {
-				ok, next = *(j.schedule).next()
+				ok, next = j.schedule.next()
 				if !ok {
 					return
 				}
