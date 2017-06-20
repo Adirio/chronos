@@ -82,6 +82,7 @@ func (s *periodic) next() (bool, time.Duration) {
 		s.n++
 		next = s.getCandidate()
 	}
+	s.n++
 	if !s.started {
 		s.started = true
 	}
@@ -140,6 +141,7 @@ func (s *monthly) next() (bool, time.Duration) {
 		s.n++
 		next = s.getCandidate()
 	}
+	s.n++
 	if !s.started {
 		s.started = true
 	}
@@ -198,6 +200,7 @@ func (s *yearly) next() (bool, time.Duration) {
 		s.n++
 		next = s.getCandidate()
 	}
+	s.n++
 	if !s.started {
 		s.started = true
 	}
