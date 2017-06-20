@@ -194,10 +194,10 @@ func (j *Job) Done() (error, chan struct{}, chan struct{}) {
 			var (
 				ok    bool
 				next  time.Duration
-				timer time.Timer
+				timer *time.Timer
 			)
 			for {
-				ok, next = j.scheduler.next()
+				ok, next = j.schedule.next()
 				if !ok {
 					return
 				}
