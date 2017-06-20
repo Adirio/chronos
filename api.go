@@ -172,7 +172,7 @@ func (j *Job) Until(t time.Time) *Job {
 
 func (j *Job) Done() (error, chan struct{}, chan struct{}) {
 	var (
-		err error
+		err      error
 		schedule *scheduler
 	)
 	switch j.aux.kind {
@@ -192,8 +192,8 @@ func (j *Job) Done() (error, chan struct{}, chan struct{}) {
 
 		go func(j *Job) {
 			var (
-				ok bool
-				next time.Duration
+				ok    bool
+				next  time.Duration
 				timer time.Timer
 			)
 			for {
