@@ -197,7 +197,7 @@ func (j *Job) Done() (error, chan struct{}, chan struct{}) {
 				timer *time.Timer
 			)
 			for {
-				ok, next = j.schedule.next()
+				ok, next = *(j.schedule).next()
 				if !ok {
 					return
 				}
